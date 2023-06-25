@@ -14,24 +14,24 @@ func main() {
 		Rules: map[string]string{},
 	}
 	projectPath := flag.String("project", ".", "laravel project root path")
-	outputPath := flag.String("output", ".", "output path for nginx config")
+	outputPath := flag.String("output", "./locations.conf", "output path for nginx config")
 	flag.Parse()
 	fmt.Println(*projectPath)
 	composer := parseComposerJson(*projectPath)
 	router := getRoutes(*projectPath)
 	src, _ := os.ReadFile(*projectPath + cacheRoutePath + router)
-	code, _ := ParsePhp(src)
+	code, _ := ParsePhp(src, composer)
 	v := NewRouteTraverser()
 	Traverse(v, code)
 
 	routes := v.Routes
 	for _, e := range routes {
-		path := PathFromPsrNs(e.Controller, composer)
+		path := composer.PathFromPsrNs(e.Controller)
 		if path == "" {
 			continue
 		}
 		cf, _ := os.ReadFile(*projectPath + "/" + path + ".php")
-		cc, _ := ParsePhp(cf)
+		cc, _ := ParsePhp(cf, composer)
 		//DumpToStd(cc)
 		//os.Exit(0)
 		ct := NewControllerTraverser(e.Action)

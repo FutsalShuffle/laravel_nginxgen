@@ -12,14 +12,16 @@ import (
 	"os"
 )
 
-func ParsePhp(code []byte) (ast.Vertex, error) {
+func ParsePhp(code []byte, composer Composer) (ast.Vertex, error) {
 	var parserErrors []*errors.Error
 	errorHandler := func(e *errors.Error) {
 		parserErrors = append(parserErrors, e)
 	}
 
+	majorVer, minorVer := composer.GetPhpVersion()
+
 	rootNode, err := parser.Parse(code, conf.Config{
-		Version:          &version.Version{Major: 8, Minor: 0},
+		Version:          &version.Version{Major: uint64(majorVer), Minor: uint64(minorVer)},
 		ErrorHandlerFunc: errorHandler,
 	})
 
