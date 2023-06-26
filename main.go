@@ -21,20 +21,20 @@ func main() {
 	router := getRoutes(*projectPath)
 	src, _ := os.ReadFile(*projectPath + cacheRoutePath + router)
 	code, _ := ParsePhp(src, composer)
+	//DumpToStd(code)
+	//os.Exit(1)
 	v := NewRouteTraverser()
 	Traverse(v, code)
 
-	routes := v.Routes
-	for _, e := range routes {
+	for _, e := range v.Routes {
 		path := composer.PathFromPsrNs(e.Controller)
-		if path == "" {
-			continue
+		if path != "" {
+			cf, _ := os.ReadFile(*projectPath + "/" + path + ".php")
+			cc, _ := ParsePhp(cf, composer)
+			ct := NewControllerTraverser(e.Action)
+			Traverse(ct, cc)
+			e.Params = &ct.Params
 		}
-		cf, _ := os.ReadFile(*projectPath + "/" + path + ".php")
-		cc, _ := ParsePhp(cf, composer)
-		ct := NewControllerTraverser(e.Action)
-		Traverse(ct, cc)
-		e.Params = &ct.Params
 		nf.AddToRules(e)
 	}
 

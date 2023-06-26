@@ -49,29 +49,32 @@ func (nf *NginxFormatter) formatRouteToRegex(route Route) (string, bool) {
 	for _, m := range match {
 		key := nf.sanitizeRgKey(m[0])
 		path = "(?P<" + key + nf.randString(4) + ">.+)"
-		if len(route.Params.IntOnly) > 0 {
-			for _, i := range route.Params.IntOnly {
-				if i == key {
-					path = intOnlyPath
+
+		if route.Params != nil {
+			if len(route.Params.IntOnly) > 0 {
+				for _, i := range route.Params.IntOnly {
+					if i == key {
+						path = intOnlyPath
+					}
 				}
 			}
-		}
 
-		if len(route.Params.StringOnly) > 0 {
-			for _, i := range route.Params.StringOnly {
-				if i == key {
-					path = stringOnlyPath
+			if len(route.Params.StringOnly) > 0 {
+				for _, i := range route.Params.StringOnly {
+					if i == key {
+						path = stringOnlyPath
+					}
 				}
 			}
-		}
 
-		if len(route.Params.Enum) > 0 {
-			i, exists := route.Params.Enum[key]
-			if exists {
-				//Заменяем , на | для реги, убираем пробелы между
-				values := strings.Replace(i, paramSeparator, "|", -1)
-				values = strings.Replace(values, " ", "", -1)
-				path = "(" + values + ")"
+			if len(route.Params.Enum) > 0 {
+				i, exists := route.Params.Enum[key]
+				if exists {
+					//Заменяем , на | для реги, убираем пробелы между
+					values := strings.Replace(i, paramSeparator, "|", -1)
+					values = strings.Replace(values, " ", "", -1)
+					path = "(" + values + ")"
+				}
 			}
 		}
 
@@ -93,20 +96,23 @@ func (nf *NginxFormatter) randString(n int) string {
 
 func (nf *NginxFormatter) makeLocationBlock(route Route, formattedRoute string, hdp bool) string {
 	body := ""
+
 	if len(route.Methods) > 0 {
 		rm := strings.Join(route.Methods, "|")
 		body += "    if ($request_method !~ ^(" + rm + ")$) {\n        return 404;\n    }\n"
 	}
 
-	if route.Params.LimitQuery != "" {
-		sp := strings.Split(route.Params.LimitQuery, paramSeparator)
-		if len(sp) > 0 {
-			qlr := "^$"
-			for _, e := range sp {
-				qlr += "|(^|&)" + e + "="
-			}
+	if route.Params != nil {
+		if route.Params.LimitQuery != "" {
+			sp := strings.Split(route.Params.LimitQuery, paramSeparator)
+			if len(sp) > 0 {
+				qlr := "^$"
+				for _, e := range sp {
+					qlr += "|(^|&)" + e + "="
+				}
 
-			body += "    if ($args !~* " + qlr + ") {\n        return 404;\n    }\n"
+				body += "    if ($args !~* " + qlr + ") {\n        return 404;\n    }\n"
+			}
 		}
 	}
 
