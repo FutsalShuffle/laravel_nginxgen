@@ -31,7 +31,7 @@ func (nf *NginxFormatter) AddToRules(route Route) {
 func (nf *NginxFormatter) WriteToConf(fp string) {
 	res := ""
 	if len(nf.Rules) == 0 {
-		res = "location / {\n        try_files $uri $uri/ /index.php?$query_string;\n}"
+		res = "location / {\n    try_files $uri $uri/ /index.php?$query_string;\n}"
 	}
 	for _, i := range nf.Rules {
 		res += i
@@ -48,7 +48,7 @@ func (nf *NginxFormatter) formatRouteToRegex(route Route) (string, bool) {
 	res := route.Uri
 	for _, m := range match {
 		key := nf.sanitizeRgKey(m[0])
-		path = "(?P<" + key + nf.randString(5) + ">.+)"
+		path = "(?P<" + key + ">.+)"
 		if len(route.Params.IntOnly) > 0 {
 			for _, i := range route.Params.IntOnly {
 				if i == key {

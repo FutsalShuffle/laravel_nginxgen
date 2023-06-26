@@ -15,19 +15,27 @@ const limitQueryParamRegex = `@NGQLimit (.+?( |\n))`
 
 type controllerTraverser struct {
 	visitor.Null
-	Params Params
-	method string
+	Params  Params
+	methods []string
 }
 
-func NewControllerTraverser(method string) *controllerTraverser {
+func NewControllerTraverser(methods []string) *controllerTraverser {
 	return &controllerTraverser{
-		Params: Params{},
-		method: method,
+		Params:  Params{},
+		methods: methods,
 	}
 }
 
 func (ct *controllerTraverser) StmtClassMethod(n *ast.StmtClassMethod) {
-	if string(n.Name.(*ast.Identifier).Value) != ct.method {
+	p := false
+	for _, m := range ct.methods {
+		if string(n.Name.(*ast.Identifier).Value) == m {
+			p = true
+			break
+		}
+	}
+
+	if !p {
 		return
 	}
 
@@ -76,7 +84,10 @@ func (ct *controllerTraverser) phpDocToParams(pd string) Params {
 	match = lqpRegex.FindAllStringSubmatch(pd, -1)
 	if len(match) > 0 {
 		key := strings.TrimSpace(match[0][1])
-		p.LimitQuery = key
+		if p.LimitQuery != "" {
+			key = "," + key
+		}
+		p.LimitQuery += key
 	}
 
 	return p

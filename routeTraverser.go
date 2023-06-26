@@ -15,13 +15,13 @@ const (
 
 type routeArrayTraverser struct {
 	visitor.Null
-	Routes    []Route
+	Routes    map[string]Route
 	TempRoute Route
 }
 
 func NewRouteTraverser() *routeArrayTraverser {
 	return &routeArrayTraverser{
-		Routes:    []Route{},
+		Routes:    map[string]Route{},
 		TempRoute: Route{},
 	}
 }
@@ -49,7 +49,9 @@ func (rat *routeArrayTraverser) ExprArray(n *ast.ExprArray) {
 						if string(iaa.Value) == controllerKey {
 							iv := aii.Val
 							c := string(iv.(*ast.ScalarString).Value)
-							sm.Controller, sm.Action = rat.processControllerString(c)
+							var a string
+							sm.Controller, a = rat.processControllerString(c)
+							sm.Action = append(sm.Action, a)
 						}
 					}
 				}
@@ -74,7 +76,22 @@ func (rat *routeArrayTraverser) ExprArray(n *ast.ExprArray) {
 
 func (rat *routeArrayTraverser) LeaveNode(n ast.Vertex) {
 	if rat.TempRoute.Uri != "" {
-		rat.Routes = append(rat.Routes, rat.TempRoute)
+		i, exists := rat.Routes[rat.TempRoute.Uri]
+		if exists {
+			em := i.Methods
+			for _, m := range rat.TempRoute.Methods {
+				em = append(em, m)
+			}
+			i.Methods = em
+			ea := i.Action
+			for _, a := range rat.TempRoute.Action {
+				ea = append(ea, a)
+			}
+			i.Action = ea
+			rat.Routes[rat.TempRoute.Uri] = i
+		} else {
+			rat.Routes[rat.TempRoute.Uri] = rat.TempRoute
+		}
 	}
 	rat.TempRoute = Route{}
 }
@@ -96,7 +113,7 @@ func (rat *routeArrayTraverser) sanitizeString(s string) string {
 type Route struct {
 	Uri        string
 	Controller string
-	Action     string
+	Action     []string
 	Params     *Params
 	Methods    []string
 }
