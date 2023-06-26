@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"laravel_nginxgen/common"
 	"math/rand"
 	"os"
 	"regexp"
@@ -18,7 +19,7 @@ type NginxFormatter struct {
 	Rules map[string]string
 }
 
-func (nf *NginxFormatter) AddToRules(route Route) {
+func (nf *NginxFormatter) AddToRules(route common.Route) {
 	formattedRoute, hdp := nf.formatRouteToRegex(route)
 	_, ok := nf.Rules[formattedRoute]
 	if ok {
@@ -39,7 +40,7 @@ func (nf *NginxFormatter) WriteToConf(fp string) {
 	_ = os.WriteFile(fp, []byte(res), 0644)
 }
 
-func (nf *NginxFormatter) formatRouteToRegex(route Route) (string, bool) {
+func (nf *NginxFormatter) formatRouteToRegex(route common.Route) (string, bool) {
 	regexUri, _ := regexp.Compile(`({.+?(}))`)
 	regexUriEmpty, _ := regexp.Compile(`{}`)
 	path := "(?P<item>.+)"
@@ -94,7 +95,7 @@ func (nf *NginxFormatter) randString(n int) string {
 	return string(b)
 }
 
-func (nf *NginxFormatter) makeLocationBlock(route Route, formattedRoute string, hdp bool) string {
+func (nf *NginxFormatter) makeLocationBlock(route common.Route, formattedRoute string, hdp bool) string {
 	body := ""
 
 	if len(route.Methods) > 0 {

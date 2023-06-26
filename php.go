@@ -12,6 +12,9 @@ import (
 	"os"
 )
 
+type PhpParser struct {
+}
+
 func ParsePhp(code []byte, composer Composer) (ast.Vertex, error) {
 	var parserErrors []*errors.Error
 	errorHandler := func(e *errors.Error) {

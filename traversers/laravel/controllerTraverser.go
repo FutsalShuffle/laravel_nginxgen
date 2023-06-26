@@ -1,8 +1,9 @@
-package main
+package laravel
 
 import (
 	"github.com/VKCOM/php-parser/pkg/ast"
 	"github.com/VKCOM/php-parser/pkg/visitor"
+	"laravel_nginxgen/common"
 	"regexp"
 	"strings"
 )
@@ -15,13 +16,13 @@ const limitQueryParamRegex = `@NGQLimit (.+?( |\n))`
 
 type controllerTraverser struct {
 	visitor.Null
-	Params  Params
+	Params  common.Params
 	methods []string
 }
 
 func NewControllerTraverser(methods []string) *controllerTraverser {
 	return &controllerTraverser{
-		Params:  Params{},
+		Params:  common.Params{},
 		methods: methods,
 	}
 }
@@ -50,8 +51,8 @@ func (ct *controllerTraverser) StmtClassMethod(n *ast.StmtClassMethod) {
 	ct.Params = ct.phpDocToParams(phpdoc)
 }
 
-func (ct *controllerTraverser) phpDocToParams(pd string) Params {
-	p := Params{
+func (ct *controllerTraverser) phpDocToParams(pd string) common.Params {
+	p := common.Params{
 		Enum:       map[string]string{},
 		IntOnly:    []string{},
 		StringOnly: []string{},
@@ -91,11 +92,4 @@ func (ct *controllerTraverser) phpDocToParams(pd string) Params {
 	}
 
 	return p
-}
-
-type Params struct {
-	IntOnly    []string
-	StringOnly []string
-	Enum       map[string]string
-	LimitQuery string
 }

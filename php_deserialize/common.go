@@ -21,9 +21,6 @@ const (
 	DELIMITER_STRING_RIGHT rune = '"'
 	DELIMITER_OBJECT_LEFT  rune = '{'
 	DELIMITER_OBJECT_RIGHT rune = '}'
-
-	FORMATTER_FLOAT     byte = 'g'
-	FORMATTER_PRECISION int  = 17
 )
 
 var (

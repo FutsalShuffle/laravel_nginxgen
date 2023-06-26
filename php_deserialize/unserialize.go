@@ -164,16 +164,6 @@ func (self *UnSerializer) decodeArray() PhpValue {
 
 		if errKey == nil && errVal == nil {
 			val[k] = v
-			/*switch t := k.(type) {
-			default:
-				self.saveError(fmt.Errorf("php_serialize: Unexpected key type %T", t))
-			case string:
-				stringKey, _ := k.(string)
-				val[stringKey] = v
-			case int:
-				intKey, _ := k.(int)
-				val[strconv.Itoa(intKey)] = v
-			}*/
 		} else {
 			self.saveError(fmt.Errorf("php_serialize: Error while reading key or(and) value of array"))
 		}

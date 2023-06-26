@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"laravel_nginxgen/traversers/laravel"
 	"os"
 	"strings"
 )
@@ -23,7 +24,7 @@ func main() {
 	code, _ := ParsePhp(src, composer)
 	//DumpToStd(code)
 	//os.Exit(1)
-	v := NewRouteTraverser()
+	v := laravel.NewRouteTraverser()
 	Traverse(v, code)
 
 	for _, e := range v.Routes {
@@ -31,7 +32,7 @@ func main() {
 		if path != "" {
 			cf, _ := os.ReadFile(*projectPath + "/" + path + ".php")
 			cc, _ := ParsePhp(cf, composer)
-			ct := NewControllerTraverser(e.Action)
+			ct := laravel.NewControllerTraverser(e.Action)
 			Traverse(ct, cc)
 			e.Params = &ct.Params
 		}
