@@ -80,6 +80,10 @@ func (rat *routeArrayTraverser) LeaveNode(n ast.Vertex) {
 		if exists {
 			em := i.Methods
 			for _, m := range rat.TempRoute.Methods {
+				//Для web роутов - браузер не делает put/patch
+				if m == "PUT" {
+					em = append(em, "POST")
+				}
 				em = append(em, m)
 			}
 			i.Methods = em

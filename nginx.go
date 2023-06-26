@@ -48,7 +48,7 @@ func (nf *NginxFormatter) formatRouteToRegex(route Route) (string, bool) {
 	res := route.Uri
 	for _, m := range match {
 		key := nf.sanitizeRgKey(m[0])
-		path = "(?P<" + key + ">.+)"
+		path = "(?P<" + key + nf.randString(4) + ">.+)"
 		if len(route.Params.IntOnly) > 0 {
 			for _, i := range route.Params.IntOnly {
 				if i == key {
