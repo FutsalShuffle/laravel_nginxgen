@@ -37,7 +37,7 @@ func (rat *routeArrayTraverser) ExprArray(n *ast.ExprArray) {
 			if string(aa.Value) == uriKey {
 				v := ai.Val
 				uri := string(v.(*ast.ScalarString).Value)
-				sm.Uri = strings.Replace(uri, "'", "", -1)
+				sm.Uri = rat.sanitizeString(uri)
 			}
 			if string(aa.Value) == actionKey {
 				v := ai.Val.(*ast.ExprArray)
@@ -61,7 +61,7 @@ func (rat *routeArrayTraverser) ExprArray(n *ast.ExprArray) {
 					switch maiit := maii.(type) {
 					case *ast.ScalarString:
 						mval := maiit.Value
-						sm.Methods = append(sm.Methods, string(mval))
+						sm.Methods = append(sm.Methods, rat.sanitizeString(string(mval)))
 					}
 				}
 			}
@@ -80,13 +80,17 @@ func (rat *routeArrayTraverser) LeaveNode(n ast.Vertex) {
 }
 
 func (rat *routeArrayTraverser) processControllerString(cs string) (string, string) {
-	pcs := strings.Replace(cs, "'", "", -1)
+	pcs := rat.sanitizeString(cs)
 	ss := strings.Split(pcs, "@")
 	if len(ss) < 2 {
 		return "", ""
 	}
 
 	return ss[0], ss[1]
+}
+
+func (rat *routeArrayTraverser) sanitizeString(s string) string {
+	return strings.Replace(s, "'", "", -1)
 }
 
 type Route struct {

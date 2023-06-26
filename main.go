@@ -32,8 +32,6 @@ func main() {
 		}
 		cf, _ := os.ReadFile(*projectPath + "/" + path + ".php")
 		cc, _ := ParsePhp(cf, composer)
-		//DumpToStd(cc)
-		//os.Exit(0)
 		ct := NewControllerTraverser(e.Action)
 		Traverse(ct, cc)
 		e.Params = &ct.Params

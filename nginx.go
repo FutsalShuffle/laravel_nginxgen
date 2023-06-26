@@ -8,9 +8,11 @@ import (
 	"strings"
 )
 
+const gateHandle = "    try_files $uri $uri/ /index.php?$query_string;"
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const intOnlyPath = "([0-9]*)"
 const stringOnlyPath = "(\\D+)"
+const paramSeparator = ","
 
 type NginxFormatter struct {
 	Rules map[string]string
@@ -29,7 +31,7 @@ func (nf *NginxFormatter) AddToRules(route Route) {
 func (nf *NginxFormatter) WriteToConf(fp string) {
 	res := ""
 	if len(nf.Rules) == 0 {
-		res = "    location / {\n        try_files $uri $uri/ /index.php?$query_string;\n    }"
+		res = "location / {\n        try_files $uri $uri/ /index.php?$query_string;\n}"
 	}
 	for _, i := range nf.Rules {
 		res += i
@@ -47,27 +49,27 @@ func (nf *NginxFormatter) formatRouteToRegex(route Route) (string, bool) {
 	for _, m := range match {
 		key := nf.sanitizeRgKey(m[0])
 		path = "(?P<" + key + nf.randString(5) + ">.+)"
-		if len(route.Params.ParamIntOnly) > 0 {
-			for _, i := range route.Params.ParamIntOnly {
+		if len(route.Params.IntOnly) > 0 {
+			for _, i := range route.Params.IntOnly {
 				if i == key {
 					path = intOnlyPath
 				}
 			}
 		}
 
-		if len(route.Params.ParamStringOnly) > 0 {
-			for _, i := range route.Params.ParamStringOnly {
+		if len(route.Params.StringOnly) > 0 {
+			for _, i := range route.Params.StringOnly {
 				if i == key {
 					path = stringOnlyPath
 				}
 			}
 		}
 
-		if len(route.Params.ParamEnum) > 0 {
-			i, exists := route.Params.ParamEnum[key]
+		if len(route.Params.Enum) > 0 {
+			i, exists := route.Params.Enum[key]
 			if exists {
 				//Заменяем , на | для реги, убираем пробелы между
-				values := strings.Replace(i, ",", "|", -1)
+				values := strings.Replace(i, paramSeparator, "|", -1)
 				values = strings.Replace(values, " ", "", -1)
 				path = "(" + values + ")"
 			}
@@ -90,9 +92,25 @@ func (nf *NginxFormatter) randString(n int) string {
 }
 
 func (nf *NginxFormatter) makeLocationBlock(route Route, formattedRoute string, hdp bool) string {
-	if route.Params != nil {
-		//TODO: ?
+	body := ""
+	if len(route.Methods) > 0 {
+		rm := strings.Join(route.Methods, "|")
+		body += "    if ($request_method !~ ^(" + rm + ")$) {\n        return 404;\n    }\n"
 	}
+
+	if route.Params.LimitQuery != "" {
+		sp := strings.Split(route.Params.LimitQuery, paramSeparator)
+		if len(sp) > 0 {
+			qlr := "^$"
+			for _, e := range sp {
+				qlr += "|(^|&)" + e + "="
+			}
+
+			body += "    if ($args !~* " + qlr + ") {\n        return 404;\n    }\n"
+		}
+	}
+
+	body += gateHandle
 	if formattedRoute != "/" {
 		formattedRoute = "/" + formattedRoute
 	}
@@ -102,8 +120,8 @@ func (nf *NginxFormatter) makeLocationBlock(route Route, formattedRoute string, 
 	}
 
 	return "location " + rp + " " + formattedRoute + " " +
-		"{\n   " +
-		"try_files $uri $uri/ /index.php?$query_string;" +
+		"{\n" +
+		body +
 		"\n" +
 		"}\n"
 }
