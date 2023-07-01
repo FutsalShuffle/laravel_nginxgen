@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-func parseComposerJson(d string) Composer {
-	cv := Composer{}
+func NewComposerFromFile(d string) *Composer {
+	cv := &Composer{}
 	file, err := os.ReadFile(d + "/composer.json")
 	if err != nil {
 		fmt.Println("Can't open composer.json. Project path is probably invalid")

@@ -3,39 +3,45 @@ package main
 import (
 	"flag"
 	"fmt"
-	"laravel_nginxgen/traversers/laravel"
+	"laravel_nginxgen/common"
+	"laravel_nginxgen/visitors/laravel"
 	"os"
 	"strings"
 )
 
-const cacheRoutePath = "/bootstrap/cache/"
-
 func main() {
-	nf := &NginxFormatter{
-		Rules: map[string]string{},
-	}
+
 	projectPath := flag.String("project", ".", "laravel project root path")
 	outputPath := flag.String("output", "./locations.conf", "output path for nginx config")
-	flag.Parse()
-	fmt.Println(*projectPath)
-	composer := parseComposerJson(*projectPath)
-	router := getRoutes(*projectPath)
-	src, _ := os.ReadFile(*projectPath + cacheRoutePath + router)
-	code, _ := ParsePhp(src, composer)
-	//DumpToStd(code)
-	//os.Exit(1)
-	v := laravel.NewRouteTraverser()
-	Traverse(v, code)
+	nginxHandle := flag.String("nginx-handle", common.NginxGateHandle, "Success route handle (default: try_files $uri $uri/ /index.php?$query_string;)")
+	wms := flag.String("nginx-wms", "404", "Nginx response status for wrong method")
+	wqps := flag.String("nginx-wqps", "404", "Nginx response status for wrong query params")
+	appendPost := flag.String("add-post", "y", "Add POST method to routes when PATCH/PUT is present (for web routes)")
 
-	for _, e := range v.Routes {
+	flag.Parse()
+
+	composer := NewComposerFromFile(*projectPath)
+	nf := NewNginxFormatter("    "+*nginxHandle, *wms, *wqps, *appendPost == "y")
+
+	router := getRoutes(*projectPath)
+	src, _ := os.ReadFile(*projectPath + common.LaravelCacheRoutePath + router)
+
+	parser := NewPhpParser(composer)
+	visitor := laravel.NewRouteTraverser()
+	code, _ := parser.Parse(src)
+	parser.Traverse(visitor, code)
+
+	for _, e := range visitor.Routes {
+		//Get Controller method phpdoc tags
 		path := composer.PathFromPsrNs(e.Controller)
 		if path != "" {
 			cf, _ := os.ReadFile(*projectPath + "/" + path + ".php")
-			cc, _ := ParsePhp(cf, composer)
+			cc, _ := parser.Parse(cf)
 			ct := laravel.NewControllerTraverser(e.Action)
-			Traverse(ct, cc)
+			parser.Traverse(ct, cc)
 			e.Params = &ct.Params
 		}
+		//Add to nginx rule block
 		nf.AddToRules(e)
 	}
 
@@ -45,7 +51,8 @@ func main() {
 }
 
 func getRoutes(path string) string {
-	entries, err := os.ReadDir(path + cacheRoutePath)
+	//Route cache file search
+	entries, err := os.ReadDir(path + common.LaravelCacheRoutePath)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

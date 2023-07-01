@@ -13,15 +13,22 @@ import (
 )
 
 type PhpParser struct {
+	composer *Composer
 }
 
-func ParsePhp(code []byte, composer Composer) (ast.Vertex, error) {
+func NewPhpParser(c *Composer) *PhpParser {
+	return &PhpParser{
+		composer: c,
+	}
+}
+
+func (pp *PhpParser) Parse(code []byte) (ast.Vertex, error) {
 	var parserErrors []*errors.Error
 	errorHandler := func(e *errors.Error) {
 		parserErrors = append(parserErrors, e)
 	}
 
-	majorVer, minorVer := composer.GetPhpVersion()
+	majorVer, minorVer := pp.composer.GetPhpVersion()
 
 	rootNode, err := parser.Parse(code, conf.Config{
 		Version:          &version.Version{Major: uint64(majorVer), Minor: uint64(minorVer)},
@@ -42,11 +49,11 @@ func ParsePhp(code []byte, composer Composer) (ast.Vertex, error) {
 	return rootNode, nil
 }
 
-func DumpToStd(node ast.Vertex) {
+func (pp *PhpParser) DumpToStd(rn ast.Vertex) {
 	goDumper := dumper.NewDumper(os.Stdout)
-	node.Accept(goDumper)
+	rn.Accept(goDumper)
 }
 
-func Traverse(v ast.Visitor, code ast.Vertex) {
-	traverser.NewTraverser(v).Traverse(code)
+func (pp *PhpParser) Traverse(v ast.Visitor, rn ast.Vertex) {
+	traverser.NewTraverser(v).Traverse(rn)
 }

@@ -9,14 +9,22 @@ import (
 	"strings"
 )
 
-const gateHandle = "    try_files $uri $uri/ /index.php?$query_string;"
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const intOnlyPath = "([0-9]*)"
-const stringOnlyPath = "(\\D+)"
-const paramSeparator = ","
-
 type NginxFormatter struct {
-	Rules map[string]string
+	Rules                 map[string]string
+	gateHandle            string
+	wrongMethodStatus     string
+	wrongQueryParamStatus string
+	appendPost            bool
+}
+
+func NewNginxFormatter(gh string, wms string, wqps string, ap bool) *NginxFormatter {
+	return &NginxFormatter{
+		Rules:                 map[string]string{},
+		gateHandle:            gh,
+		wrongMethodStatus:     wms,
+		wrongQueryParamStatus: wqps,
+		appendPost:            ap,
+	}
 }
 
 func (nf *NginxFormatter) AddToRules(route common.Route) {
@@ -55,7 +63,7 @@ func (nf *NginxFormatter) formatRouteToRegex(route common.Route) (string, bool) 
 			if len(route.Params.IntOnly) > 0 {
 				for _, i := range route.Params.IntOnly {
 					if i == key {
-						path = intOnlyPath
+						path = common.NginxIntOnlyPath
 					}
 				}
 			}
@@ -63,7 +71,7 @@ func (nf *NginxFormatter) formatRouteToRegex(route common.Route) (string, bool) 
 			if len(route.Params.StringOnly) > 0 {
 				for _, i := range route.Params.StringOnly {
 					if i == key {
-						path = stringOnlyPath
+						path = common.NginxStringOnlyPath
 					}
 				}
 			}
@@ -72,7 +80,7 @@ func (nf *NginxFormatter) formatRouteToRegex(route common.Route) (string, bool) 
 				i, exists := route.Params.Enum[key]
 				if exists {
 					//Заменяем , на | для реги, убираем пробелы между
-					values := strings.Replace(i, paramSeparator, "|", -1)
+					values := strings.Replace(i, common.PDocParamSeparator, "|", -1)
 					values = strings.Replace(values, " ", "", -1)
 					path = "(" + values + ")"
 				}
@@ -90,7 +98,7 @@ func (nf *NginxFormatter) formatRouteToRegex(route common.Route) (string, bool) 
 func (nf *NginxFormatter) randString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+		b[i] = common.RandomLetterBytes[rand.Int63()%int64(len(common.RandomLetterBytes))]
 	}
 	return string(b)
 }
@@ -99,25 +107,25 @@ func (nf *NginxFormatter) makeLocationBlock(route common.Route, formattedRoute s
 	body := ""
 
 	if len(route.Methods) > 0 {
-		rm := strings.Join(route.Methods, "|")
-		body += "    if ($request_method !~ ^(" + rm + ")$) {\n        return 404;\n    }\n"
+		rm := nf.getRouteMethods(route.Methods)
+		body += "    if ($request_method !~ ^(" + rm + ")$) {\n        return " + nf.wrongMethodStatus + ";\n    }\n"
 	}
 
 	if route.Params != nil {
 		if route.Params.LimitQuery != "" {
-			sp := strings.Split(route.Params.LimitQuery, paramSeparator)
+			sp := strings.Split(route.Params.LimitQuery, common.PDocParamSeparator)
 			if len(sp) > 0 {
 				qlr := "^$"
 				for _, e := range sp {
 					qlr += "|(^|&)" + e + "="
 				}
 
-				body += "    if ($args !~* " + qlr + ") {\n        return 404;\n    }\n"
+				body += "    if ($args !~* " + qlr + ") {\n        return " + nf.wrongQueryParamStatus + ";\n    }\n"
 			}
 		}
 	}
 
-	body += gateHandle
+	body += nf.gateHandle
 	if formattedRoute != "/" {
 		formattedRoute = "/" + formattedRoute
 	}
@@ -139,4 +147,18 @@ func (nf *NginxFormatter) sanitizeRgKey(key string) string {
 	nkey = strings.Replace(nkey, "?", "", -1)
 
 	return nkey
+}
+
+func (nf *NginxFormatter) getRouteMethods(m []string) string {
+	if nf.appendPost == false {
+		return strings.Join(m, "|")
+	}
+	for _, i := range m {
+		if i == "PUT" || i == "PATCH" {
+			m = append(m, "POST")
+			break
+		}
+	}
+
+	return strings.Join(m, "|")
 }
